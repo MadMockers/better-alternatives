@@ -1,6 +1,6 @@
 This is a proof of concept for better solution of 'update-alternatives'
 
-Code is messy / buggy / hodgepodged / will likely segfault
+Code is messy / buggy / hodgepodged / will likely segfault  
 Written between the hours of 10PM and 3AM
 
 'alternatives' file format:
@@ -20,7 +20,7 @@ $HOME/.alternatives
 /etc/balternatives/.alternatives
 ```
 
-Default alternative settings go in /etc/balternatives/.alternatives
+Default alternative settings go in /etc/balternatives/.alternatives  
 User customizations go in their home directory
 
 Compile with:
