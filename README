@@ -1,0 +1,18 @@
+This is a proof of concept for better solution of 'update-alternatives'
+
+Code is messy / buggy / hodgepodged / will likely segfault
+Written between the hours of 10PM and 3AM
+
+'alternatives' file format:
+<alternative_name> <path/to/option> <priority>
+
+e.g:
+editor /usr/bin/vim 5
+
+Search path:
+$HOME/.alternatives
+/etc/balternatives/$GROUP_ID.alternatives
+/etc/balternatives/.alternatives
+
+Default alternative settings go in /etc/balternatives/.alternatives
+User customizations go in their home directory
