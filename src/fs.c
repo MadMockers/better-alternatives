@@ -56,42 +56,6 @@ struct readdir_context
     void *buf;
 };
 
-static void add_entry(void *ctxt, struct tree_node *n)
-{
-    struct map_bucket *b = list_entry(n, struct map_bucket, node);
-    struct readdir_context *c = ctxt;
-
-    struct alt_entry *e;
-    struct map_entry *m, *i;
-    list_for_each_entry_safe(m, i, &b->list, list)
-    {
-        e = list_entry(m, struct alt_entry, entry);
-        c->filler(c->buf, e->alt_name, NULL, 0);
-
-        /* Freeing this corrupts the Map, but we aren't using it anymore */
-        free(e->alt_name);
-        free(e);
-    }
-    
-}
-
-static long long str_hash(void *a)
-{
-    unsigned char *str = a;
-    long long hash = 5381;
-    int c;
-
-    while ( (c = *str++) )
-        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
-
-    return hash;
-}
-
-static char str_equals(void *a, void *b)
-{
-    return !strcmp(a, b);
-}
-
 static int balt_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
              off_t offset, struct fuse_file_info *fi)
 {
@@ -104,18 +68,17 @@ static int balt_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     filler(buf, ".", NULL, 0);
     filler(buf, "..", NULL, 0);
 
-    Map map = NEW(Map, str_hash, str_equals);
-
     struct fuse_context *ctxt = fuse_get_context();
-    config_read_all(ctxt->uid, ctxt->gid, map);
+    List list = config_read_all(ctxt->uid, ctxt->gid);
 
-    struct readdir_context c = {
-        .filler = filler,
-        .buf = buf,
-    };
+    char *name;
+    while( (name = CALL(list, pop)) )
+    {
+        filler(buf, name, NULL, 0);
+        free(name);
+    }
 
-    CALL(map->btree, iterate, add_entry, &c);
-    DELETE(map);
+    DELETE(list);
 
     return 0;
 }

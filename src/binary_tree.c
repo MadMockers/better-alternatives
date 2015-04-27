@@ -23,23 +23,50 @@ static inline void force_link(struct tree_node *h, struct tree_node *prev)
         h->children[1]->parent = h;
 }
 
-static void METHOD_IMPL(priv_iterate, struct tree_node *n, void (*func)(void *, struct tree_node*), void *ctxt)
+static void METHOD_IMPL(priv_remove, struct tree_node *node)
+{
+    struct tree_node *parent = node->parent;
+    struct tree_node *replace = node->children[0];
+    struct tree_node *add = NULL;
+    if(replace)
+        add = node->children[1];
+    else
+        replace = node->children[1];
+
+    if(replace)
+    {
+        replace->parent = parent;
+        force_link(replace, node);
+    }
+
+    if(add)
+        CALL(this, put, add->priority, add);
+
+}
+
+static void METHOD_IMPL(priv_iterate, struct tree_node *n, kv_iterator_t it, void *ctxt)
 {
     if(!n)
         return;
-    PRIV_CALL(this, priv_iterate, n->children[0], func, ctxt);
-    PRIV_CALL(this, priv_iterate, n->children[1], func, ctxt);
-    func(ctxt, n);
+    PRIV_CALL(this, priv_iterate, n->children[0], it, ctxt);
+    PRIV_CALL(this, priv_iterate, n->children[1], it, ctxt);
+    if(it(ctxt, &n->priority, n->ctxt) == ITR_REMOVE)
+    {
+        PRIV_CALL(this, priv_remove, n);
+        free(n);
+    }
 }
 
-void METHOD_IMPL(iterate, void (*func)(void *, struct tree_node*), void *ctxt)
+void METHOD_IMPL(iterate, kv_iterator_t it, void *ctxt)
 {
-    PRIV_CALL(this, priv_iterate, this->root, func, ctxt);
+    PRIV_CALL(this, priv_iterate, this->root, it, ctxt);
 }
 
-char METHOD_IMPL(put, long long key, struct tree_node *node)
+char METHOD_IMPL(put, long long key, void *value)
 {
+    struct tree_node *node = malloc(sizeof(*node));
     memset(node, '\0', sizeof(*node));
+    node->ctxt = value;
     node->priority = key;
     if(!this->root)
     {
@@ -77,7 +104,7 @@ char METHOD_IMPL(put, long long key, struct tree_node *node)
     }
 }
 
-struct tree_node *METHOD_IMPL(get, long long key)
+void *METHOD_IMPL(get, long long key)
 {
     if(!this->root)
         return NULL;
@@ -96,36 +123,22 @@ struct tree_node *METHOD_IMPL(get, long long key)
         }
         else
         {
-            return trav;
+            return trav->ctxt;
         }
     }
     return NULL;
 }
 
-struct tree_node *METHOD_IMPL(remove, long long key)
+void *METHOD_IMPL(remove, long long key)
 {
     struct tree_node *node = CALL(this, get, key);
     if(!node)
         return NULL;
 
-    struct tree_node *parent = node->parent;
-    struct tree_node *replace = node->children[0];
-    struct tree_node *add = NULL;
-    if(replace)
-        add = node->children[1];
-    else
-        replace = node->children[1];
-
-    if(replace)
-    {
-        replace->parent = parent;
-        force_link(replace, node);
-    }
-
-    if(add)
-        CALL(this, put, key, add);
-
-    return node;
+    PRIV_CALL(this, priv_remove, node);
+    void *ret = node->ctxt;
+    free(node);
+    return ret;
 }
 
 VIRTUAL(Object)

@@ -20,9 +20,13 @@ static char *read_config(char *file, const char *link, char *out, size_t s)
     if(!f)
         return NULL;
 
+    int count;
     int bin_priority = INT_MIN;
     char buf[1024];
-    while(!feof(f))
+
+    /* limit the number of lines as this may be untrusted data
+     * This leaves us open to a maximum of 10MiB mem usage per file */
+    for(count = 0;count < 10 * 1024 && !feof(f);count++)
     {
         char *line = fgets(buf, sizeof(buf), f);
         if(!line)
@@ -97,15 +101,14 @@ static void read_all(char *file, Map map)
 
         if(!CALL(map, get, alt_name))
         {
-            struct alt_entry *e = malloc(sizeof(*e));
-            e->alt_name = strdup(alt_name);
-            CALL(map, put, e->alt_name, &e->entry);
+            char *name = strdup(alt_name);
+            CALL(map, put, name, name);
         }
     }
     fclose(f);
 }
 
-void config_read_all(int uid, int gid, Map map)
+List config_read_all(int uid, int gid)
 {
     /* TODO: by executable */
 
@@ -113,6 +116,8 @@ void config_read_all(int uid, int gid, Map map)
      *               /etc/balternatives/$GID.alternatives
      *               /etc/balternatives/.alternatives
      */
+
+    Map map = NEW(Map, str_hash, str_equals);
 
     struct passwd *pw;
     char path[PATH_MAX];
@@ -128,6 +133,10 @@ void config_read_all(int uid, int gid, Map map)
     read_all(path, map);
 
     read_all("/etc/balternatives/.alternatives", map);
+
+    List list = CALL(map, to_list);
+    DELETE(map);
+    return list;
 }
 
 char *config_resolve_link(int pid, int uid, int gid, const char *link, char *out, size_t s)
