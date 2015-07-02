@@ -18,12 +18,12 @@ static List METHOD_IMPL(construct)
 
 static void METHOD_IMPL(deconstruct)
 {
-    SUPER_CALL(Object, this, deconstruct);
     struct list_container *i, *j;
     list_for_each_entry_safe(i, j, &this->list, list)
     {
         free(i);
     }
+    SUPER_CALL(Object, this, deconstruct);
 }
 
 static struct list_head *METHOD_IMPL(get_list_at_index, size_t index)
@@ -96,6 +96,7 @@ static void *METHOD_IMPL(remove, size_t index)
     if(!remove_at)
         return NULL;
 
+    list_del(remove_at);
     struct list_container *cont;
     void *ret;
     cont = list_entry(remove_at, struct list_container, list);
